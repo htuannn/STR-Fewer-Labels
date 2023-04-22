@@ -197,7 +197,7 @@ class Batch_Balanced_Dataset(object):
 def hierarchical_dataset(root, opt, select_data="/", data_type="label", mode="train"):
     """select_data='/' contains all sub-directory of root directory"""
     dataset_list = []
-    dataset_log = f"dataset_root:    {root}\t dataset: {select_data[0]}"
+    dataset_log = f"dataset_root:    {root}\t dataset: {select_data}"
     print(dataset_log)
     dataset_log += "\n"
     for dirpath, dirnames, filenames in os.walk(root + "/"):
@@ -217,9 +217,8 @@ def hierarchical_dataset(root, opt, select_data="/", data_type="label", mode="tr
                 print(sub_dataset_log)
                 dataset_log += f"{sub_dataset_log}\n"
                 dataset_list.append(dataset)
-
     concatenated_dataset = ConcatDataset(dataset_list)
-
+    concatenated_dataset.index_list= np.array([index  for index in range(len(concatenated_dataset))])
     return concatenated_dataset, dataset_log
 
 
@@ -361,6 +360,29 @@ class RawDataset(Dataset):
 
         return (img, self.image_path_list[index])
 
+class Subset_Dataset(Dataset):
+  def __init__(self, dataset, mask_index, label = None):
+    """
+    dataset: hierarchical_dataset
+    mask_index: Corresponding index for subset on `dataset`
+    label: Label of subset_dataset
+    """
+    self.mask_index= mask_index
+    self.index_list=dataset.index_list[mask_index]
+    self.dataset = Subset(dataset, self.mask_index)
+    self.label = label
+    self.nSamples = int(len(self.dataset))
+    
+  def __len__(self):
+    return self.nSamples
+
+  def __getitem__(self, index):
+      image = self.dataset[index]
+      if self.label is None:
+        return image
+      label = self.label[index]
+      return image, label
+    
 
 class AlignCollate(object):
     def __init__(self, opt, mode="train"):
